@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dora's AI Travel Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script type="module">
+        import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&display=swap');
+        
+        body {
+            font-family: 'Comic Neue', cursive;
+            background-image: url('https://wallpapercave.com/wp/wp1935097.jpg');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            min-height: 100vh;
+        }
+        
+        .dora-pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .map-marker {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background-color: red;
+            border-radius: 50% 50% 50% 0;
+            transform: rotate(-45deg);
+            left: 50%;
+            top: 50%;
+            margin: -15px 0 0 -15px;
+            animation: bounce 1s infinite alternate;
+        }
+        
+        @keyframes bounce {
+            0% { transform: rotate(-45deg) translateY(0); }
+            100% { transform: rotate(-45deg) translateY(-10px); }
+        }
+        
+        .message-bubble {
+            position: relative;
+            background: #fff;
+            border-radius: 20px;
+            padding: 15px;
+            margin: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            opacity: 0;
+            transform: translateY(10px);
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+        
+        @keyframes fadeIn {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .message-bubble:after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 20px;
+            border-width: 10px 10px 0;
+            border-style: solid;
+            border-color: #fff transparent;
+        }
+        
+        .user-bubble {
+            background: #e3f2fd;
+            align-self: flex-end;
+        }
+        
+        .user-bubble:after {
+            right: 20px;
+            left: auto;
+            border-width: 10px 0 10px 10px;
+            border-color: transparent transparent transparent #e3f2fd;
+        }
+        
+        .typing-indicator {
+            display: flex;
+            padding: 10px;
+            opacity: 0;
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+        
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background-color: #666;
+            border-radius: 50%;
+            margin: 0 2px;
+            animation: typing 1.5s infinite ease-in-out;
+        }
+        
+        .typing-dot:nth-child(1) { animation-delay: 0s; }
+        .typing-dot:nth-child(2) { animation-delay: 0.3s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.6s; }
+        
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-5px); }
+        }
+        
+        .loading-bar {
+            height: 4px;
+            width: 0;
+            background-color: #3b82f6;
+            position: absolute;
+            top: 0;
+            left: 0;
+            border-radius: 2px;
+            animation: loading 1.5s ease-in-out infinite;
+        }
+        
+        @keyframes loading {
+            0% { width: 0; left: 0; }
+            50% { width: 100%; left: 0; }
+            100% { width: 0; left: 100%; }
+        }
+        
+        .map-container {
+            position: relative;
+            overflow: hidden;
+            border-radius: 12px 12px 0 0;
+        }
+        
+        .map-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+        
+        .map-container:hover .map-overlay {
+            opacity: 1;
+        }
+        
+        .destination-card {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: white;
+            padding: 10px 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transform: translateY(20px);
+            opacity: 0;
+            transition: all 0.3s ease;
+            max-width: 80%;
+        }
+        
+        .show-card {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        
+        .voice-wave {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 4px;
+            height: 40px;
+            margin: 10px 0;
+        }
+        
+        .voice-wave-bar {
+            width: 4px;
+            height: 10px;
+            background-color: #3b82f6;
+            border-radius: 2px;
+            animation: voiceWave 1.2s infinite ease-in-out;
+        }
+        
+        .voice-wave-bar:nth-child(1) { animation-delay: 0.1s; height: 6px; }
+        .voice-wave-bar:nth-child(2) { animation-delay: 0.2s; height: 10px; }
+        .voice-wave-bar:nth-child(3) { animation-delay: 0.3s; height: 14px; }
+        .voice-wave-bar:nth-child(4) { animation-delay: 0.4s; height: 18px; }
+        .voice-wave-bar:nth-child(5) { animation-delay: 0.5s; height: 22px; }
+        .voice-wave-bar:nth-child(6) { animation-delay: 0.6s; height: 18px; }
+        .voice-wave-bar:nth-child(7) { animation-delay: 0.7s; height: 14px; }
+        .voice-wave-bar:nth-child(8) { animation-delay: 0.8s; height: 10px; }
+        .voice-wave-bar:nth-child(9) { animation-delay: 0.9s; height: 6px; }
+        
+        @keyframes voiceWave {
+            0%, 100% { transform: scaleY(0.5); }
+            50% { transform: scaleY(1.5); }
+        }
+        
+        .voice-input-container {
+            position: relative;
+            width: 100%;
+        }
+        
+        .voice-input-indicator {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border-radius: 20px;
+            z-index: 10;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+        
+        .voice-input-indicator.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+        
+        .voice-input-text {
+            margin-top: 10px;
+            font-weight: bold;
+            color: #3b82f6;
+        }
+    </style>
+</head>
+<body class="bg-blue-50">
+    <div class="container mx-auto px-4 py-8 max-w-4xl">
+        <!-- Header -->
+        <header class="flex flex-col items-center mb-8">
+            <div class="relative">
+                <img src="https://wallpapercave.com/wp/wp5410353.jpg" alt="Dora the Explorer" class="w-40 h-40 rounded-full border-4 border-yellow-400 shadow-lg dora-pulse">
+                <div class="absolute -bottom-2 -right-2 bg-yellow-400 rounded-full p-2 shadow-md">
+                    <i class="fas fa-microphone text-xl text-red-600"></i>
+                </div>
+            </div>
+            <h1 class="text-4xl font-bold text-blue-800 mt-4">Dora's AI Travel Assistant</h1>
+            <p class="text-lg text-blue-600">¡Hola! Let's explore the world together with AI!</p>
+        </header>
+
+        <!-- Main Content -->
+        <main class="bg-white rounded-xl shadow-xl overflow-hidden">
+            <!-- Map Section -->
+            <!--<div class="map-container relative h-64 bg-blue-100">
+                <div id="map" class="w-full h-full flex items-center justify-center">
+                    <img src="https://i.imgur.com/5ZQ9Q9X.png" alt="World Map" class="w-full h-full object-cover">
+                    <div class="map-marker hidden" id="destinationMarker"></div>
+                </div>
+                <div class="map-overlay">
+                    <button id="exploreMoreBtn" class="bg-white text-blue-600 px-4 py-2 rounded-full font-bold shadow-lg flex items-center">
+                        <i class="fas fa-search mr-2"></i> Explore More
+                    </button>
+                </div>
+                <div id="destinationCard" class="destination-card hidden">
+                    <h3 class="font-bold text-blue-800" id="destinationTitle"></h3>
+                    <p class="text-sm text-gray-600" id="destinationDesc"></p>
+                </div>
+                <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-blue-100 to-transparent h-16"></div>
+            </div>-->
+
+            <!-- Chat Section -->
+            <div class="p-4 relative">
+                <div class="relative">
+                    <div class="loading-bar hidden" id="loadingBar"></div>
+                </div>
+                <div id="chatContainer" class="h-64 overflow-y-auto mb-4 flex flex-col space-y-2">
+                    <!-- Messages will appear here -->
+                    <div class="message-bubble">
+                        <p>¡Hola! I'm Dora, your AI-powered travel assistant. Just press the microphone button to start talking to me!</p>
+                    </div>
+                </div>
+
+                <!-- Input Section -->
+                <div class="flex items-center space-x-2">
+                    <div class="voice-input-container flex-1">
+                        <input type="text" id="userInput" placeholder="Or type here if you prefer..." class="w-full px-4 py-2 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <div class="voice-input-indicator" id="voiceInputIndicator">
+                            <div class="voice-wave">
+                                <div class="voice-wave-bar"></div>
+                                <div class="voice-wave-bar"></div>
+                                <div class="voice-wave-bar"></div>
+                                <div class="voice-wave-bar"></div>
+                                <div class="voice-wave-bar"></div>
+                                <div class="voice-wave-bar"></div>
+                                <div class="voice-wave-bar"></div>
+                                <div class="voice-wave-bar"></div>
+                                <div class="voice-wave-bar"></div>
+                            </div>
+                            <div class="voice-input-text" id="voiceInputText">Listening...</div>
+                        </div>
+                    </div>
+                    <button id="voiceButton" class="bg-red-500 hover:bg-red-600 text-white rounded-full p-3 transition duration-200">
+                        <i class="fas fa-microphone"></i>
+                    </button>
+                    <button id="sendButton" class="bg-blue-500 hover:bg-blue-600 text-white rounded-full p-3 transition duration-200">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </main>
+
+        <!-- Features Section -->
+        <div class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-white p-4 rounded-xl shadow-md flex items-center space-x-3 hover:scale-105 transition-transform">
+                <div class="bg-yellow-100 p-3 rounded-full">
+                    <i class="fas fa-robot text-yellow-500 text-xl"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-blue-800">Voice Interactive</h3>
+                    <p class="text-sm text-gray-600">Speak naturally with Dora</p>
+                </div>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-md flex items-center space-x-3 hover:scale-105 transition-transform">
+                <div class="bg-green-100 p-3 rounded-full">
+                    <i class="fas fa-route text-green-500 text-xl"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-blue-800">Travel Tips</h3>
+                    <p class="text-sm text-gray-600">Get personalized travel advice</p>
+                </div>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-md flex items-center space-x-3 hover:scale-105 transition-transform">
+                <div class="bg-purple-100 p-3 rounded-full">
+                    <i class="fas fa-language text-purple-500 text-xl"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-blue-800">Language Help</h3>
+                    <p class="text-sm text-gray-600">Learn key phrases instantly</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        document.addEventListener('DOMContentLoaded', function() {
+            const chatContainer = document.getElementById('chatContainer');
+            const userInput = document.getElementById('userInput');
+            const sendButton = document.getElementById('sendButton');
+            const voiceButton = document.getElementById('voiceButton');
+            const voiceInputIndicator = document.getElementById('voiceInputIndicator');
+            const voiceInputText = document.getElementById('voiceInputText');
+            const destinationMarker = document.getElementById('destinationMarker');
+            const destinationCard = document.getElementById('destinationCard');
+            const destinationTitle = document.getElementById('destinationTitle');
+            const destinationDesc = document.getElementById('destinationDesc');
+            const loadingBar = document.getElementById('loadingBar');
+            const exploreMoreBtn = document.getElementById('exploreMoreBtn');
+            
+            // Speech synthesis (text-to-speech)
+            const synth = window.speechSynthesis;
+            let voices = [];
+            let doraVoice = null;
+            
+            // Load voices when they become available
+            synth.onvoiceschanged = function() {
+                voices = synth.getVoices();
+                // Try to find a female voice that sounds friendly
+                doraVoice = voices.find(voice => 
+                    voice.name.includes('Female') || 
+                    voice.name.includes('woman') ||
+                    voice.name.includes('Google UK English Female') ||
+                    voice.name.includes('Microsoft Zira Desktop')
+                ) || voices[0];
+            };
+            
+            // Initialize Google Generative AI
+            const genAI = new GoogleGenerativeAI('AIzaSyAdu_bOvDCTXV2TcFzHcx0bdmXyi2xozw0');
+            const model = genAI.getGenerativeModel({ 
+                model: "gemini-2.0-pro-exp-02-05",
+                systemInstruction: `You are Dora, an enthusiastic AI travel assistant that helps users explore and learn about different places.
+Key traits:
+- Mix English and simple Spanish phrases in your responses
+- Keep answers educational yet fun and engaging
+- Focus on providing interesting facts and travel tips
+- Maintain a cheerful, friendly personality
+- Keep responses concise (1-2 paragraphs)
+- If asked about inappropriate topics, politely decline
+- Use Dora's catchphrases like "¡Vamos!" and "¡Fantástico!"`
+            });
+
+            // Initialize chat
+            const chat = model.startChat({
+                history: []
+            });
+
+            let recognition;
+            let isListening = false;
+            let currentDestination = null;
+            let finalTranscript = '';
+            
+            // Check if browser supports speech recognition
+            if ('webkitSpeechRecognition' in window) {
+                recognition = new webkitSpeechRecognition();
+                recognition.continuous = true;
+                recognition.interimResults = true;
+                
+                recognition.onstart = function() {
+                    isListening = true;
+                    finalTranscript = '';
+                    voiceButton.innerHTML = '<i class="fas fa-stop"></i>';
+                    voiceButton.classList.remove('bg-red-500');
+                    voiceButton.classList.add('bg-red-600');
+                    voiceInputIndicator.classList.add('active');
+                    addMessage('Dora', 'I\'m listening... tell me where you want to go!');
+                    speak('I\'m listening... tell me where you want to go!');
+                };
+                
+                recognition.onresult = function(event) {
+                    let interimTranscript = '';
+                    
+                    for (let i = event.resultIndex; i < event.results.length; i++) {
+                        const transcript = event.results[i][0].transcript;
+                        if (event.results[i].isFinal) {
+                            finalTranscript += transcript;
+                        } else {
+                            interimTranscript += transcript;
+                        }
+                    }
+                    
+                    // Update the UI with what we're hearing
+                    voiceInputText.textContent = interimTranscript || 'Listening...';
+                    userInput.value = finalTranscript + interimTranscript;
+                };
+                
+                recognition.onerror = function(event) {
+                    console.error('Speech recognition error', event.error);
+                    stopListening();
+                    addMessage('Dora', 'Oops! I didn\'t catch that. Can you try again?');
+                    speak('Oops! I didn\'t catch that. Can you try again?');
+                };
+                
+                recognition.onend = function() {
+                    if (finalTranscript) {
+                        processUserInput(finalTranscript);
+                    }
+                    stopListening();
+                };
+            } else {
+                voiceButton.disabled = true;
+                voiceButton.classList.add('opacity-50');
+                addMessage('Dora', 'Your browser doesn\'t support voice recognition. Try typing instead!');
+            }
+            
+            function stopListening() {
+                isListening = false;
+                voiceButton.innerHTML = '<i class="fas fa-microphone"></i>';
+                voiceButton.classList.remove('bg-red-600');
+                voiceButton.classList.add('bg-red-500');
+                voiceInputIndicator.classList.remove('active');
+                voiceInputText.textContent = 'Listening...';
+                if (recognition) recognition.stop();
+            }
+            
+            // Voice button click handler
+            voiceButton.addEventListener('click', function() {
+                if (isListening) {
+                    stopListening();
+                } else {
+                    try {
+                        recognition.start();
+                    } catch(e) {
+                        console.error('Error starting recognition:', e);
+                        addMessage('Dora', 'I can\'t access the microphone. Please check your permissions.');
+                        speak('I can\'t access the microphone. Please check your permissions.');
+                    }
+                }
+            });
+            
+            // Send button click handler
+            sendButton.addEventListener('click', function() {
+                const message = userInput.value.trim();
+                if (message) {
+                    processUserInput(message);
+                    userInput.value = '';
+                }
+            });
+            
+            // Enter key handler
+            userInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    const message = userInput.value.trim();
+                    if (message) {
+                        processUserInput(message);
+                        userInput.value = '';
+                    }
+                }
+            });
+            
+            // Explore more button handler
+            exploreMoreBtn.addEventListener('click', function() {
+                if (currentDestination) {
+                    processUserInput(`Tell me more about ${currentDestination}`);
+                } else {
+                    addMessage('Dora', 'First tell me where you want to go, then I can tell you more about it!');
+                    speak('First tell me where you want to go, then I can tell you more about it!');
+                }
+            });
+            
+            function speak(text) {
+                if (synth.speaking) {
+                    synth.cancel();
+                }
+                
+                const utterance = new SpeechSynthesisUtterance(text);
+                if (doraVoice) {
+                    utterance.voice = doraVoice;
+                    utterance.rate = 1.1; // Slightly faster for Dora's energetic personality
+                    utterance.pitch = 1.2; // Slightly higher pitch
+                }
+                
+                synth.speak(utterance);
+            }
+            
+            async function processUserInput(message) {
+                addMessage('You', message, true);
+                
+                // Show typing indicator
+                const typingDiv = document.createElement('div');
+                typingDiv.className = 'typing-indicator';
+                typingDiv.innerHTML = `
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                `;
+                chatContainer.appendChild(typingDiv);
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+                
+                // Show loading bar
+                loadingBar.classList.remove('hidden');
+                
+                try {
+                    // Call Gemini AI API
+                    const response = await callGeminiAPI(message);
+                    
+                    // Remove typing indicator
+                    chatContainer.removeChild(typingDiv);
+                    loadingBar.classList.add('hidden');
+                    
+                    // Add Dora's response
+                    addMessage('Dora', response);
+                    
+                    // Speak the response
+                    speak(response);
+                    
+                    // Check if response includes a destination
+                    const destination = extractDestination(message);
+                    if (destination) {
+                        currentDestination = destination;
+                        showDestinationOnMap(destination);
+                        updateDestinationCard(destination, response);
+                    }
+                } catch (error) {
+                    console.error('Error calling Gemini API:', error);
+                    chatContainer.removeChild(typingDiv);
+                    loadingBar.classList.add('hidden');
+                    addMessage('Dora', '¡Ay caramba! I had trouble connecting to the AI. Can you try again?');
+                    speak('¡Ay caramba! I had trouble connecting to the AI. Can you try again?');
+                }
+            }
+            
+            async function callGeminiAPI(message) {
+                try {
+                    const result = await chat.sendMessage(message);
+                    const response = await result.response;
+                    return response.candidates[0].content.parts[0].text;
+                } catch (error) {
+                    console.error('Error calling Gemini API:', error);
+                    throw error;
+                }
+            }
+            
+            function addMessage(sender, message, isUser = false) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = isUser ? 'message-bubble user-bubble' : 'message-bubble';
+                
+                // Format the message with some Dora-style enthusiasm
+                let formattedMessage = message;
+                if (!isUser) {
+                    // Add occasional Spanish words for authenticity
+                    const spanishWords = {
+                        'great': '¡fantástico!',
+                        'good': 'bueno',
+                        'wonderful': 'maravilloso',
+                        'friend': 'amigo',
+                        'let\'s go': '¡vamos!',
+                        'look': 'mira',
+                        'thank you': 'gracias',
+                        'please': 'por favor'
+                    };
+                    
+                    for (const [eng, esp] of Object.entries(spanishWords)) {
+                        formattedMessage = formattedMessage.replace(new RegExp(eng, 'gi'), esp);
+                    }
+                }
+                
+                messageDiv.innerHTML = `<p><strong>${sender}:</strong> ${formattedMessage}</p>`;
+                chatContainer.appendChild(messageDiv);
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+            
+            function extractDestination(message) {
+                // This is a simple extraction - in a real app you might use a more sophisticated NLP approach
+                const placeKeywords = ['visit', 'go to', 'travel to', 'about', 'tell me about', 'information about', 'where is'];
+                const lowerMessage = message.toLowerCase();
+                
+                for (const keyword of placeKeywords) {
+                    if (lowerMessage.includes(keyword)) {
+                        // Extract the text after the keyword
+                        const startIndex = lowerMessage.indexOf(keyword) + keyword.length;
+                        const potentialPlace = message.substring(startIndex).trim();
+                        if (potentialPlace) {
+                            // Clean up the place name
+                            return potentialPlace.split(/[.,!?;]/)[0].trim();
+                        }
+                    }
+                }
+                
+                return null;
+            }
+            
+            function showDestinationOnMap(destination) {
+                destinationMarker.classList.remove('hidden');
+                
+                // Simple animation to show we're "traveling" to the destination
+                destinationMarker.style.transition = 'all 1.5s ease-in-out';
+                destinationMarker.style.transform = 'rotate(-45deg) scale(1.5)';
+                
+                setTimeout(() => {
+                    destinationMarker.style.transform = 'rotate(-45deg) scale(1)';
+                }, 1500);
+            }
+            
+            function updateDestinationCard(destination, info) {
+                destinationTitle.textContent = destination;
+                
+                // Extract the first sentence or two for the card
+                const shortDesc = info.split('.')[0] + (info.split('.').length > 1 ? '.' : '');
+                destinationDesc.textContent = shortDesc;
+                
+                destinationCard.classList.remove('hidden');
+                setTimeout(() => {
+                    destinationCard.classList.add('show-card');
+                }, 100);
+            }
+            
+            // Initial greeting
+            setTimeout(() => {
+                addMessage('Dora', 'Press the microphone button and tell me where you want to go! I\'ll help you explore! ¡Vamos!');
+                speak('Press the microphone button and tell me where you want to go! I\'ll help you explore! ¡Vamos!');
+            }, 10000);
+        });
+    </script>
+<p style="border-radius: 8px; text-align: center; font-size: 12px; color: #fff; margin-top: 16px;position: fixed; left: 8px; bottom: 8px; z-index: 10; background: rgba(0, 0, 0, 0.8); padding: 4px 8px;">Made with <img src="https://enzostvs-deepsite.hf.space/logo.svg" alt="DeepSite Logo" style="width: 16px; height: 16px; vertical-align: middle;display:inline-block;margin-right:3px;filter:brightness(0) invert(1);"><a href="https://enzostvs-deepsite.hf.space" style="color: #fff;text-decoration: underline;" target="_blank" >DeepSite</a> - 🧬 <a href="https://enzostvs-deepsite.hf.space?remix=saravatpt/doraai" style="color: #fff;text-decoration: underline;" target="_blank" >Remix</a></p></body>
+</html>

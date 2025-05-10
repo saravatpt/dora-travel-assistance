@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dora's AI Travel Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-blue-50 h-screen overflow-hidden">
+    <div class="h-screen flex flex-col p-4">
+
+        <!-- Header -->
+        <header class="flex items-center justify-between mb-2 shrink-0">
+            <!-- Left side with Dora image -->
+            <div class="flex items-center">
+                <div class="relative">
+                    <img src="https://wallpapercave.com/wp/wp5410353.jpg" alt="Dora the Explorer" class="w-20 h-20 rounded-full border-4 border-yellow-400 shadow-lg dora-pulse">
+                    <div class="absolute -bottom-2 -right-2 bg-yellow-400 rounded-full p-2 shadow-md">
+                        <i class="fas fa-microphone text-xl text-red-600"></i>
+                    </div>
+                </div>
+                <div class="ml-4">
+                    <h1 class="text-2xl font-bold text-blue-800">Dora's AI Travel Assistant</h1>
+                    <p class="text-sm text-blue-600">¡Hola! Let's explore together!</p>
+                </div>
+            </div>
+            <!-- Right side with mode toggle & voice select -->
+            <div class="flex items-center space-x-4">
+                <button id="modeToggle" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-3 rounded-full flex items-center space-x-2 transition-all duration-300 text-sm">
+                    <i class="fas fa-keyboard"></i>
+                    <span id="modeText">Text Mode</span>
+                </button>
+                <!-- Custom Searchable Dropdown -->
+                <div class="relative" id="voiceDropdownContainer">
+                    <input type="text" id="voiceSearchSelectInput" placeholder="Select or search voice..." class="px-2 py-1 rounded-lg border border-gray-300 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-48 cursor-pointer" readonly />
+                    <div id="voiceDropdownList" class="absolute z-10 mt-1 w-full max-h-40 overflow-y-auto bg-white border border-gray-300 rounded-lg shadow-lg hidden">
+                        <!-- Voice options will be populated here by JS -->
+                    </div>
+                </div>
+                <!-- Hidden original select for potential fallback or data storage -->
+                <select id="voiceSelectHidden" class="hidden">
+                     <option value="">Auto-select voice</option>
+                </select>
+            </div>
+        </header>
+
+        <!-- Main Content (Chat + Input) -->
+        <main class="bg-white rounded-t-xl shadow-xl overflow-hidden flex-grow flex flex-col">
+            <div class="relative flex-shrink-0"> <!-- Loading bar container -->
+                 <div class="loading-bar hidden" id="loadingBar"></div>
+            </div>
+            <!-- Chat Container -->
+            <div id="chatContainer" class="flex-grow overflow-y-auto flex flex-col space-y-2 p-4 min-h-0">
+                    <!-- Messages will appear here -->
+                    
+                </div>
+
+            <!-- Input Section -->
+            <div class="input-section border-t border-gray-200 p-3 shrink-0">
+                 <!-- Stop Speaking Button (conditionally shown by JS) -->
+                 <div id="stopSpeakingSection" class="flex items-center justify-center mb-2">
+                     <button id="stopSpeakingBtn" class="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-1 px-3 rounded-full flex items-center space-x-1 transition duration-200 hidden text-sm">
+                         <i class="fas fa-stop text-xs"></i>
+                         <span>Stop Speaking</span>
+                     </button>
+                 </div>
+                 <!-- Text Input -->
+                 <div id="textInputSection" class="flex items-center space-x-2 w-full">
+                        <input type="text" id="userInput" placeholder="Type your query here..." class="w-full px-4 py-2 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <button id="sendButton" class="bg-blue-500 hover:bg-blue-600 text-white rounded-full p-3 transition duration-200">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                 <!-- Voice Input -->
+                 <div id="voiceInputSection" class="flex items-center justify-center space-x-4 hidden">
+                        <button id="voiceButton" class="bg-red-500 hover:bg-red-600 text-white rounded-full p-3 transition duration-200">
+                            <i class="fas fa-microphone"></i>
+                        </button>
+                        <div class="voice-input-indicator hidden" id="voiceInputIndicator">
+                            <div class="voice-wave">
+                                <div class="voice-wave-bar"></div>
+                                <div class="voice-wave-bar"></div>
+                                <div class="voice-wave-bar"></div>
+                                <div class="voice-wave-bar"></div>
+                                <div class="voice-wave-bar"></div>
+                                <div class="voice-wave-bar"></div>
+                                <div class="voice-wave-bar"></div>
+                                <div class="voice-wave-bar"></div>
+                                <div class="voice-wave-bar"></div>
+                            </div>
+                            <div class="voice-input-text" id="voiceInputText">Listening...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Features Section (Below Main Content) -->
+        <div class="grid grid-cols-3 gap-3 mt-2 shrink-0">
+            <div class="bg-white p-4 rounded-xl shadow-md flex items-center space-x-3 hover:scale-105 transition-transform">
+                <div class="bg-yellow-100 p-3 rounded-full">
+                    <i class="fas fa-robot text-yellow-500 text-xl"></i>
+                </div>
+                <div>
+                    <h3 class="font-semibold text-blue-800 text-sm">Voice Interactive</h3>
+                    <p class="text-xs text-gray-600">Speak naturally</p>
+                </div>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-md flex items-center space-x-3 hover:scale-105 transition-transform">
+                <div class="bg-green-100 p-3 rounded-full">
+                    <i class="fas fa-route text-green-500 text-xl"></i>
+                </div>
+                <div>
+                    <h3 class="font-semibold text-blue-800 text-sm">Travel Tips</h3>
+                    <p class="text-xs text-gray-600">Get travel advice</p>
+                </div>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-md flex items-center space-x-3 hover:scale-105 transition-transform">
+                <div class="bg-purple-100 p-3 rounded-full">
+                    <i class="fas fa-language text-purple-500 text-xl"></i>
+                </div>
+                <div>
+                    <h3 class="font-semibold text-blue-800 text-sm">Language Help</h3>
+                    <p class="text-xs text-gray-600">Learn key phrases</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
