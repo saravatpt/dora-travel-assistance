@@ -1,7 +1,7 @@
 
 document.addEventListener('DOMContentLoaded', function() {
     // API Configuration
-    const GEMINI_API_KEY = "AIzaSyAdu_bOvDCTXV2TcFzHcx0bdmXyi2xozw0"; // Load API key from environment variables
+    const GEMINI_API_KEY = ""; // Load API key from environment variables
     const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
    
     // Initialize DOM elements
